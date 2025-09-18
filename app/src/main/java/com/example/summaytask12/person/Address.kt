@@ -1,4 +1,4 @@
-package com.example.summaytask12.model
+package com.example.summaytask12.person
 
 data class Address(
    private val street: String,
@@ -7,4 +7,3 @@ data class Address(
    private val zip: String,
    private val country: String
 )
-

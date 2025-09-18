@@ -1,0 +1,11 @@
+id,ISBN,tittle,subject,publisher,publicationDate,language,numberOfPages,format,author_name,rack_name,rack_location
+1,584134493-5,Warm Bodies,Comedy,Thoughtbeat,2008-01-01,Bosnian,19,HARDCOVER,Meryl,A,A1
+2,444370139-7,Brassed Off,Comedy,Thoughtbeat,2014-01-01,Indonesian,65,HARDCOVER,Meryl,A,A2
+3,527702973-7,Order and Disorder,Documentary,Rooxo,2011-01-01,Sinhala,16,HARDCOVER,Christophe,A,A3
+4,515518291-3,Walk on the Moon,Documentary,Rooxo,2011-01-01,Czech,23,HARDCOVER,Christophe,A,A4
+5,777944629-8,G.I. Joe: Retaliation,Action,Mydeo,2011-01-01,Kurdish,64,HARDCOVER,Edward,A,A5
+6,729777879-6,Nobel Son,Action,Mydeo,2015-01-01,Norwegian Nynorsk,65,HARDCOVER,Edward,A,A2
+7,388462074-6,Klown: The Movie (Klovn),Finance,Quimba,2020-01-01,Mongolian,30,HARDCOVER,Gerick,A,A2
+8,273897242-X,Internecine Project,Finance,Quimba,2013-01-01,Dutch,10,HARDCOVER,Gerick,A,A2
+9,185004649-2,Pretty Sweet,Self help,Eare,2021-01-01,Thai,91,HARDCOVER,Aksel,A,A5
+10,934465681-9,Haute Cuisine,Self help,Eare,2019-01-01,Albanian,4,HARDCOVER,Aksel,A,A4

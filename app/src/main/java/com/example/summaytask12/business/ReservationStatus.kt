@@ -1,4 +1,4 @@
-package com.example.summaytask12.action
+package com.example.summaytask12.business
 
 enum class ReservationStatus{
    Waiting,
