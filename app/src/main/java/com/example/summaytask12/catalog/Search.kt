@@ -9,4 +9,5 @@ interface Search{
    fun searchByAuthor(author:String):List<Book>?
    fun searchBySubject(subject:String):List<Book>?
    fun searchByPublisher(publisher:String):List<Book>?
+   fun searchByISBN(isbn:String, bookItems:List<BookItem>):List<Book>
 }

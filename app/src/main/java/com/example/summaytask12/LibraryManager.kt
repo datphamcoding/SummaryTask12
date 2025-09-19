@@ -1,11 +1,11 @@
 package com.example.summaytask12
 
 import android.os.Build
-import android.os.Message
 import androidx.annotation.RequiresApi
 import com.example.summaytask12.book.Book
 import com.example.summaytask12.book.BookFormat
 import com.example.summaytask12.book.BookItem
+import com.example.summaytask12.book.BookStatus
 import com.example.summaytask12.book.Rack
 import com.example.summaytask12.business.Loan
 import com.example.summaytask12.business.Reservation
@@ -59,7 +59,7 @@ class LibraryManager {
                members.add(member)
             }
       }
-      println("Members loaded: $members")
+      // println("Members loaded: $members") // Quieted for cleaner output
    }
 
    private fun loadLibrariansFromCSV(inputStream: InputStream) {
@@ -90,7 +90,7 @@ class LibraryManager {
                librarians.add(librarian)
             }
       }
-      println("Librarians loaded: $librarians")
+      // println("Librarians loaded: $librarians") // Quieted for cleaner output
    }
 
    @RequiresApi(Build.VERSION_CODES.O)
@@ -119,13 +119,12 @@ class LibraryManager {
                val bookItem = BookItem(
                   id = tokens[0],
                   book = book,
-                  placeAt = rack
+                  placeAt = rack // placeAt is private in BookItem, so its details aren't directly accessible from here
                )
-               //println(bookItem)
                bookItems.add(bookItem)
             }
       }
-      bookItems.forEach { println(it) }
+      // bookItems.forEach { println(it) } // Quieted for cleaner output during init
    }
 
    init {
@@ -149,15 +148,20 @@ class LibraryManager {
             printOptionMember()
             when (readln()) {
                "1" -> findBook()
-               "8" -> logout("Logged out as member successfully")
+               "2" -> borrowBook()
+               "3" -> logout("Logged out as member successfully")
+               "4" -> viewBorrowedBooks()
+               "5" -> returnBook()
                else -> {
                   println("Invalid option")
                }
             }
-         } else {
+         } else { // currentUser is Librarian
             printOptionLibrarian()
             when (readln()) {
-               "8" -> logout("Logged out as librarian successfully")
+               "1" -> addBookItem()
+               "2" -> logout("Logged out as librarian successfully")
+               "3" -> viewAllLibraryBooks() // Added case for viewing all books
                else -> {
                   println("Invalid option")
                }
@@ -192,15 +196,17 @@ class LibraryManager {
    }
 
    private val printOptionMember = {
-      println("***Library Management System***")
+      println("\n***Library Management System***")
       println("1. Find a book")
       println("2. Borrow a book")
-      println("8. Log out")
-      print("Enter your choice (1-11): ")
+      println("3. Log out")
+      println("4. View borrowed books")
+      println("5. Return a book")
+      print("Enter your choice (1-5): ")
    }
 
    private fun findBook() {
-      println("Search by:")
+      println("\nSearch by:")
       println("1. Title")
       println("2. Author")
       println("3. Subject")
@@ -235,24 +241,234 @@ class LibraryManager {
       }
    }
 
-   private fun reserveBook(){
-      print("Enter title: ")
+   private fun borrowBook() {
+      if (currentUser !is Member) {
+         println("Only members can borrow books.")
+         return
+      }
+      print("Enter title of the book to borrow: ")
       val title = readln()
-      val books= findBookBy(title, Catalog::searchByTitle)
-   }
+      val books = Catalog.searchByTitle(title)
+      if (books != null && books.isNotEmpty()) {
+         val wantedBook = books[0] // Assuming the first match is the desired one
+         // Find an available BookItem corresponding to the Book
+         val availableBookItem = bookItems.find {
+            it.book.ISBN == wantedBook.ISBN && (it.status == BookStatus.AVAILABLE)
+         }
 
-   private fun findBookBy(str:String, action:(String)-> List<Book>?){
-      val books = action(str)
-      if (books == null) println("No books found") else {
-         println("Search results:")
-         books.forEach { println(it) }
+         if (availableBookItem != null) {
+            if (availableBookItem.loan()) { // loan() method in BookItem updates its status to LOANED
+               bookLoans.add(
+                  Loan(
+                     currentUser as Member,
+                     availableBookItem
+                  )
+               )
+               println("Book '${availableBookItem.book.title}' loaned successfully.")
+            } else {
+               println("Could not loan the book. Status: ${availableBookItem.status}")
+            }
+         } else {
+            println("No available copies of '${wantedBook.title}' found or all are currently loaned.")
+         }
+      } else {
+         println("No books found with that title.")
       }
    }
 
+   private fun viewBorrowedBooks(): List<Loan>? {
+      if (currentUser !is Member) {
+         println("Error: Not logged in as a member.")
+         return null
+      }
+      val member = currentUser as Member
+      val memberLoans = bookLoans.filter { it.member.id == member.id && it.returnDate == null }
+
+      if (memberLoans.isEmpty()) {
+         println("You have not borrowed any books currently.")
+         return null
+      }
+
+      println("\n*** Your Borrowed Books ***")
+      memberLoans.forEachIndexed { index, loan ->
+         val bookItem = loan.bookItem
+         println("${index + 1}. Title: ${bookItem.book.title}")
+         println("   Borrowed on: ${loan.checkoutDate}")
+         println("   Due by: ${loan.dueDate}")
+         println("   Status: Currently Borrowed")
+      }
+      println("*************************")
+      return memberLoans
+   }
+
+   private fun returnBook() {
+      if (currentUser !is Member) {
+         println("Only members can return books.")
+         return
+      }
+      val borrowedBooks = viewBorrowedBooks() // Display borrowed books and get the list
+
+      if (borrowedBooks == null || borrowedBooks.isEmpty()) {
+         // viewBorrowedBooks() already prints a message if no books are borrowed
+         return
+      }
+
+      print("Enter the number of the book you want to return (or 0 to cancel): ")
+      val choice = readln().toIntOrNull()
+
+      if (choice == null || choice == 0) {
+         println("Return cancelled.")
+         return
+      }
+      if (choice > 0 && choice <= borrowedBooks.size) {
+         val loanToReturn = borrowedBooks[choice - 1]
+         loanToReturn.returnBook() // Mark as returned in Loan object
+         println("Book '${loanToReturn.bookItem.book.title}' returned successfully.")
+      } else {
+         println("Invalid choice.")
+      }
+   }
+
+   private fun findBookBy(str: String, action: (String) -> List<Book>?) {
+      val books = action(str)
+      if (books == null || books.isEmpty()) {
+         println("No books found matching '$str'.")
+      } else {
+         println("\nSearch results:")
+         books.forEach { println("- ${it.title} by ${it.authors.joinToString { author -> author.name }} (ISBN: ${it.ISBN})") }
+      }
+   }
+
+   private fun addBookItem() {
+      if (currentUser !is Librarian) {
+         println("Only librarians can add book items")
+         return
+      }
+      println("\n--- Add New Book Item ---")
+      print("Enter ISBN: ")
+      val isbn = readln()
+      // Check if a book with this ISBN already exists in Catalog to reuse info or simplify
+      val existingBook = Catalog.searchByISBN(isbn, bookItems).firstOrNull()
+
+      val title: String
+      val subject: String
+      val publisher: String
+      val publicationDate: LocalDate
+      val language: String
+      val numberOfPages: Int
+      val format: BookFormat
+      val authorNamesInput: String
+
+      if (existingBook != null) {
+         println("Book with ISBN $isbn found in catalog. Using existing details for: Title, Subject, Publisher, etc.")
+         title = existingBook.title
+         subject = existingBook.subject
+         publisher = existingBook.publisher
+         publicationDate = existingBook.publicationDate
+         language = existingBook.language
+         numberOfPages = existingBook.numberOfPages
+         format = existingBook.format
+         authorNamesInput = existingBook.authors.joinToString("; ") { it.name }
+         println("Title: $title, Authors: $authorNamesInput") // Show some details
+      } else {
+         print("Enter title: ")
+         title = readln()
+         print("Enter subject: ")
+         subject = readln()
+         print("Enter publisher: ")
+         publisher = readln()
+         print("Enter publication date (YYYY-MM-DD): ")
+         publicationDate = LocalDate.parse(readln())
+         print("Enter language: ")
+         language = readln()
+         print("Enter number of pages: ")
+         numberOfPages = readln().toInt()
+         print("Enter format (e.g., HARDCOVER, PAPERBACK): ")
+         format = BookFormat.valueOf(readln().uppercase())
+         print("Enter author names (separated by semicolon if multiple): ")
+         authorNamesInput = readln()
+      }
+
+      val authors = authorNamesInput.split(';').map { Author(name = it.trim(), description = "") }
+
+      print("Enter rack name: ")
+      val rackName = readln()
+      print("Enter rack location: ")
+      val rackLocation = readln()
+
+      val newBook = Book(
+         ISBN = isbn,
+         title = title,
+         subject = subject,
+         publisher = publisher,
+         publicationDate = publicationDate,
+         language = language,
+         numberOfPages = numberOfPages,
+         format = format,
+         authors = authors
+      )
+
+      val newBookItem = BookItem(
+         // id is auto-generated
+         book = newBook,
+         placeAt = Rack(name = rackName, location = rackLocation),
+         status = BookStatus.AVAILABLE // New books are available by default
+      )
+
+      bookItems.add(newBookItem)
+      Catalog.addBookItems(bookItems) // Assuming Catalog has a method to add single items or it rebuilds
+      println("Book item '${newBook.title}' added successfully with ID ${newBookItem.id} and status ${newBookItem.status}.")
+   }
+
+   private fun viewAllLibraryBooks() {
+      if (currentUser !is Librarian) {
+         println("Only librarians can view all books.")
+         return
+      }
+
+      if (bookItems.isEmpty()) {
+         println("\nThere are no books in the library catalog at the moment.")
+         return
+      }
+
+      println("\n--- All Library Books ---")
+      // Define column widths
+      val indexWidth = 5
+      val titleWidth = 40
+      val authorsWidth = 30
+      val isbnWidth = 15
+      val statusWidth = 12
+
+      // Header format string
+      val headerFormat = "%-${indexWidth}s | %-${titleWidth}s | %-${authorsWidth}s | %-${isbnWidth}s | %-${statusWidth}s"
+      // Data row format string
+      val rowFormat = "%-${indexWidth}d | %-${titleWidth}.${titleWidth}s | %-${authorsWidth}.${authorsWidth}s | %-${isbnWidth}s | %-${statusWidth}s"
+      
+      // Print table header
+      println(String.format(headerFormat, "No.", "Title", "Authors", "ISBN", "Status"))
+      println("-".repeat(indexWidth + titleWidth + authorsWidth + isbnWidth + statusWidth + 10)) // Separator line
+
+      bookItems.forEachIndexed { index, bookItem ->
+         val book = bookItem.book
+         val authorsString = book.authors.joinToString(", ") { it.name }
+         println(String.format(rowFormat,
+            index + 1,
+            book.title,
+            authorsString,
+            book.ISBN,
+            bookItem.status.toString()
+         ))
+      }
+      println("-".repeat(indexWidth + titleWidth + authorsWidth + isbnWidth + statusWidth + 10)) // Footer separator line
+      // Note: To display Rack details (name, location), the 'placeAt' property
+      // in BookItem.kt needs to be public, or BookItem needs a public getter for Rack details.
+   }
+
    private val printOptionLibrarian = {
-      println("***Library Management System***")
+      println("\n***Library Management System***")
       println("1. Add a new book")
-      println("8. Log out")
-      print("Enter your choice (1-11): ")
+      println("2. Log out")
+      println("3. View all book in library")
+      print("Enter your choice (1-3): ")
    }
 }

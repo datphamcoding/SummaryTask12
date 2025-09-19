@@ -21,10 +21,6 @@ object Catalog: Search {
          bookPublishers.getOrPut(book.publisher) { mutableListOf() }.add(book)
       }
 
-      println("----------")
-      bookPublishers.forEach {
-         println("${it.key} ${it.value.size}")
-      }
    }
 
    override fun searchByTitle(title: String):List<Book>? = bookTitles[title]
@@ -34,4 +30,8 @@ object Catalog: Search {
    override fun searchBySubject(subject: String):List<Book>? = bookSubjects[subject]
 
    override fun searchByPublisher(publisher: String): List<Book>? = bookPublishers[publisher]
+
+   override fun searchByISBN(isbn: String, bookItems: List<BookItem>): List<Book> {
+      return bookItems.filter { it.book.ISBN == isbn }.map { it.book }
+   }
 }
